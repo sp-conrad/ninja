@@ -71,6 +71,9 @@ struct Options {
   /// Build file to load.
   const char* input_file;
 
+  /// Cache directory to read/write
+  const char* cache_directory;
+
   /// Directory to change into before running.
   const char* working_dir;
 
@@ -219,6 +222,7 @@ void Usage(const BuildConfig& config) {
 "if targets are unspecified, builds the 'default' target (see manual).\n"
 "\n"
 "options:\n"
+"  --buildupdate  Build/use object cache\n"
 "  --version      print ninja version (\"%s\")\n"
 "  -v, --verbose  show all command lines while building\n"
 "  --quiet        don't show progress status, just command output\n"
@@ -1429,7 +1433,7 @@ int ReadFlags(int* argc, char*** argv,
 
   int opt;
   while (!options->tool &&
-         (opt = getopt_long(*argc, *argv, "d:f:j:k:l:nt:vw:C:h", kLongOptions,
+         (opt = getopt_long(*argc, *argv, "d:f:b:j:k:l:nt:vw:C:h", kLongOptions,
                             NULL)) != -1) {
     switch (opt) {
       case 'd':
@@ -1438,6 +1442,9 @@ int ReadFlags(int* argc, char*** argv,
         break;
       case 'f':
         options->input_file = optarg;
+        break;
+      case 'b':
+        options->cache_directory = optarg;
         break;
       case 'j': {
         char* end;
@@ -1536,6 +1543,11 @@ NORETURN void real_main(int argc, char** argv) {
     if (chdir(options.working_dir) < 0) {
       Fatal("chdir to '%s' - %s", options.working_dir, strerror(errno));
     }
+  }
+
+  if (options.cache_directory) {
+      RealDiskInterface di;
+      di.MakeDirs(options.cache_directory);
   }
 
   if (options.tool && options.tool->when == Tool::RUN_AFTER_FLAGS) {
